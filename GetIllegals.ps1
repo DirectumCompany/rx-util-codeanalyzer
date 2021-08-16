@@ -17,10 +17,10 @@ function Get-FilesCanExecuteIllegal ($file)
         if($match.Value.Contains("Remote"))
         {
             Write-Host $file.FullName
-            return 1
+            $result = 1
         }
     }
-    return 0
+    return $result
 }
 
 function Get-FilesRefreshIllegal ($file)
@@ -32,10 +32,10 @@ function Get-FilesRefreshIllegal ($file)
         if($match.Value.Contains("Remote"))
         {
             Write-Host $file.FullName
-            return 1
+            $result = 1
         }
     }
-    return 0
+    return $result
 }
 
 function Get-FilesAnonymousIllegal ($file)
