@@ -1,4 +1,4 @@
-param([string]$path, [string]$all)
+param([string]$path, [string]$all, [string]$mod)
 function Get-FilesCreateDeleteGetIllegal ($file)
 {
     $illegal = $file | Select-String -Pattern '\w*.(Create|Delete|Get|GetAll)\(' -AllMatches -CaseSensitive
@@ -16,9 +16,11 @@ function Get-FilesCanExecuteIllegal ($file)
     {
         if($match.Value.Contains("Remote"))
         {
-            $file.FullName
+            Write-Host $file.FullName
+            $result = 1
         }
     }
+    return $result
 }
 
 function Get-FilesRefreshIllegal ($file)
@@ -29,9 +31,11 @@ function Get-FilesRefreshIllegal ($file)
     {
         if($match.Value.Contains("Remote"))
         {
-            $file.FullName
+            Write-Host $file.FullName
+            $result = 1
         }
     }
+    return $result
 }
 
 function Get-FilesAnonymousIllegal ($file)
@@ -65,11 +69,32 @@ if ($path -ne $null)
 {
     cd $path
 }
+
+if ($mod -eq "git")
+{
+    $modifiedFilesPath = git diff --cached --name-only --diff-filter=ACM --line-prefix="${PWD}\"
+    $modifiedFiles = [System.Collections.ArrayList]::new()
+    foreach($filePath in $modifiedFilesPath)
+    {
+        $file = Get-Item $filePath
+        $modifiedFiles.Add($file)
+    }
+    $allFiles = $modifiedFiles;
+    $withoutServerFiles = $modifiedFiles;
+    $refreshFiles = $modifiedFiles;
+    $canExecuteFiles = $modifiedFiles;
+}
+
+$result = 0;
+
+
 if ($all -eq "all")
 {
-    $allFiles = Get-ChildItem -Include *.cs -Exclude *.xaml.cs, *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -notmatch '\w*.(Debug|AssemblyInfo)' }
-    $withoutServerFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -notmatch '\w*.Server' }
-
+    if($mod -ne "git")
+    {
+        $allFiles = Get-ChildItem -Include *.cs -Exclude *.xaml.cs, *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -notmatch '\w*.(Debug|AssemblyInfo)' }
+        $withoutServerFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -notmatch '\w*.Server' }
+    }
     Write-Host "Использование new, as is или запрещенных библиотек NET" -ForegroundColor Yellow
     foreach($file in $allFiles)
     {
@@ -85,21 +110,25 @@ if ($all -eq "all")
     }
 
 }
-
-$refreshFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -match '\w*.ClientBase.*(Handlers)' }
-$canExecuteFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -match '\w*.ClientBase.*Actions' }
+if($mod -ne "git")
+{
+    $refreshFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -match '\w*.ClientBase.*(Handlers)' }
+    $canExecuteFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -match '\w*.ClientBase.*Actions' }
+}
 
 Write-Host "Вызов серверных функций в Возможность выполнения действий." -ForegroundColor Red
 foreach($file in $canExecuteFiles)
 {
-    Get-FilesCanExecuteIllegal($file)
+    $result = Get-FilesCanExecuteIllegal($file)
 }
 
 Write-Host "Вызов серверных функций в Обновлении формы." -ForegroundColor Red
 foreach($file in $refreshFiles)
 {
-    Get-FilesRefreshIllegal($file)
+    $result = Get-FilesRefreshIllegal($file)
 }
 
-
-powershell -noexit
+if ($result -ne 0)
+{
+    exit (1)
+}
