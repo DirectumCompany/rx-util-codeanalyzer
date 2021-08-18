@@ -143,8 +143,4 @@ foreach($file in $refreshFiles)
         $exitcode = 1;
     }
 }
-
-if ($exitcode -eq 1)
-{
-    exit (1)
-}
+exit($exitcode)
