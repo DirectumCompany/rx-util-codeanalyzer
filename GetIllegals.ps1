@@ -2,22 +2,27 @@ param([string]$path, [string]$all, [string]$mod)
 function Get-FilesCreateDeleteGetIllegal ($file)
 {
     $illegal = $file | Select-String -Pattern '\w*.(Create|Delete|Get|GetAll)\(' -AllMatches -CaseSensitive
-    if ($illegal.Matches.Count -ne 0)
+    if ($illegal.Count -gt 0 -or $illegal.Matches.Count -gt 0)
     {
-        $file.FullName
+        Write-Host $file.FullName
+        
     }
 }
 
 function Get-FilesCanExecuteIllegal ($file)
 {
+    $result = 0
     $content = Get-Content $file.FullName | % { $contentstring += $_ }
-    $illegal = @($contentstring | Select-String -Pattern 'CanExecute.*?(Remote|public)' -AllMatches -CaseSensitive).Matches
-    foreach ($match in $illegal)
+    $illegal = $contentstring | Select-String -Pattern 'CanExecute.*?(Remote|public)' -AllMatches -CaseSensitive
+    if ($illegal.Count -ne 0)
     {
-        if($match.Value.Contains("Remote"))
+        foreach ($match in $illegal.Matches)
         {
-            Write-Host $file.FullName
-            $result = 1
+            if($match.Value -ne $null -and $match.Value.Contains("Remote"))
+            {
+                Write-Host $file.FullName
+                $result = 1
+            }
         }
     }
     return $result
@@ -25,14 +30,18 @@ function Get-FilesCanExecuteIllegal ($file)
 
 function Get-FilesRefreshIllegal ($file)
 {
+    $result = 0
     $content = Get-Content $file.FullName | % { $contentstring += $_ }
-    $illegal = @($contentstring | Select-String -Pattern ' Refresh\(.*?(Remote|public)' -AllMatches -CaseSensitive).Matches
-    foreach ($match in $illegal)
+    $illegal = $contentstring | Select-String -Pattern ' Refresh\(.*?(Remote|public)' -AllMatches -CaseSensitive
+    if ($illegal.Count -ne 0)
     {
-        if($match.Value.Contains("Remote"))
+        foreach ($match in $illegal.Matches)
         {
-            Write-Host $file.FullName
-            $result = 1
+            if($match.Value -ne $null -and $match.Value.Contains("Remote"))
+            {
+                Write-Host $file.FullName
+                $result = 1
+            }
         }
     }
     return $result
@@ -41,27 +50,27 @@ function Get-FilesRefreshIllegal ($file)
 function Get-FilesAnonymousIllegal ($file)
 {
     $illegal = $file | Select-String -Pattern '\s*new\s+(?!.*List)' -AllMatches -CaseSensitive
-    if ($illegal.Matches.Count -ne 0)
+    if ($illegal.Count -gt 0 -or $illegal.Matches.Count -gt 0)
     {
-        $file.FullName
+        Write-Host $file.FullName
     }
 }
 
 function Get-FilesIsAsIllegal ($file)
 {
     $illegal = $file | Select-String -Pattern '\s(is|as)\s' -AllMatches -CaseSensitive
-    if ($illegal.Matches.Count -ne 0)
+    if ($illegal.Count -gt 0 -or $illegal.Matches.Count -gt 0)
     {
-        $file.FullName
+        Write-Host $file.FullName
     }
 }
 
 function Get-FilesNetClassIllegal ($file)
 {
     $illegal = $file | Select-String -Pattern '.*(Tuple|CultureInfo|Convert.To|System.(Windows|Reflection|Xml|Threading|Data))' -AllMatches -CaseSensitive
-    if ($illegal.Matches.Count -ne 0)
+    if ($illegal.Count -gt 0 -or $illegal.Matches.Count -gt 0)
     {
-        $file.FullName
+        Write-Host $file.FullName
     }
 }
 
@@ -85,8 +94,7 @@ if ($mod -eq "git")
     $canExecuteFiles = $modifiedFiles;
 }
 
-$result = 0;
-
+$exitcode = 0;
 
 if ($all -eq "all")
 {
@@ -120,15 +128,23 @@ Write-Host "Вызов серверных функций в Возможность выполнения действий." -Foregro
 foreach($file in $canExecuteFiles)
 {
     $result = Get-FilesCanExecuteIllegal($file)
+    if ($result -eq 1)
+    {
+        $exitcode = 1;
+    }
 }
 
 Write-Host "Вызов серверных функций в Обновлении формы." -ForegroundColor Red
 foreach($file in $refreshFiles)
 {
     $result = Get-FilesRefreshIllegal($file)
+    if ($result -eq 1)
+    {
+        $exitcode = 1;
+    }
 }
 
-if ($result -ne 0)
+if ($exitcode -eq 1)
 {
     exit (1)
 }
