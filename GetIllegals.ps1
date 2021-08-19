@@ -13,12 +13,12 @@ function Get-FilesCanExecuteIllegal ($file)
 {
     $result = 0
     $content = Get-Content $file.FullName | % { $contentstring += $_ }
-    $illegal = $contentstring | Select-String -Pattern 'CanExecute.*?(Remote|public)' -AllMatches -CaseSensitive
+    $illegal = $contentstring | Select-String -Pattern 'CanExecute.*?(Remote|Get\(|GetAll\(|public)' -AllMatches -CaseSensitive
     if ($illegal.Count -ne 0)
     {
         foreach ($match in $illegal.Matches)
         {
-            if($match.Value -ne $null -and $match.Value.Contains("Remote"))
+            if($match.Value -ne $null -and ($match.Value.Contains("Remote") -or $match.Value.Contains("Get(") -or $match.Value.Contains("GetAll(")))
             {
                 Write-Host $file.FullName
                 $result = 1
@@ -124,7 +124,7 @@ if($mod -ne "git")
     $canExecuteFiles = Get-ChildItem -Include *.cs -Exclude *.g.cs, *g.i.cs -Recurse | ? { $_.FullName -match '\w*.ClientBase.*Actions' }
 }
 
-Write-Host "Вызов серверных функций в Возможность выполнения действий." -ForegroundColor Red
+Write-Host "Вызов Get|GetAll или серверных функций в Возможности выполнения действий." -ForegroundColor Red
 foreach($file in $canExecuteFiles)
 {
     $result = Get-FilesCanExecuteIllegal($file)
