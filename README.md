@@ -1,4 +1,5 @@
-# GetIllegals
+# rx-util-codeanalyzer
+
 Репозиторий с шаблоном разработки «Скрипт-анализатор для поиска нелегалов».
 
 ## Описание
@@ -25,13 +26,13 @@
 Скрипт не имеет инсталлятора. Установка не требуется.
 
 Для проверки необходимо:
-1. [Скачать](https://tfsozrrx.directum.ru/DefaultCollection/849b60ab-13af-4f70-848e-01b6520ca395/_api/_versioncontrol/itemContentZipped?repositoryId=f6920874-c65e-490d-8f1b-4fe34d4f922c&path=%2F&version=GBmaster&__v=5).
+1. [Скачать](https://github.com/DirectumCompany/rx-util-codeanalyzer/archive/refs/heads/master.zip).
 2. Разархивировать в папку с исходными файлами разработки.
 3. Изменить файл **Запуск.bat**, указав в нем необходимые параметры.
 4. Запустить утилиту с помощью **Запуск.bat**, посмотреть результат работы.
 
 Для использования при коммите:
-1. [Скачать](https://tfsozrrx.directum.ru/DefaultCollection/849b60ab-13af-4f70-848e-01b6520ca395/_api/_versioncontrol/itemContentZipped?repositoryId=f6920874-c65e-490d-8f1b-4fe34d4f922c&path=%2F&version=GBmaster&__v=5).
+1. [Скачать](https://github.com/DirectumCompany/rx-util-codeanalyzer/archive/refs/heads/master.zip).
 2. Разархивировать, скопировать **GetIllegals.ps1** в папку с репозиторием, а **pre-commit** в папку **.git\hooks** данного репозитория.
 3. Внести файл **GetIllegals.ps1** в файл **.gitignore**.
 
