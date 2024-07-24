@@ -1,5 +1,7 @@
-param([string]$path, [string]$all, [string]$mod)
+﻿param([string]$path, [string]$all, [string]$mod)
 
+$ErrorMessagePrefix = "[Error]"
+$WarningMessagePrefix = "[Warn]"
 # Получить изменения добавленные в файл в текущей ветке Git.
 function Get-AddedCode ($file)
 {
@@ -19,6 +21,7 @@ function Get-AddedCode ($file)
 # Поиск вызова Create|Delete|Get|GetAll вне серверных функций
 function Get-FilesCreateDeleteGetIllegal ($file, $mod)
 {
+	$result = 0
 	if ($mod -eq "Pipeline")
 	{
 		$diff = Get-AddedCode $file
@@ -32,9 +35,11 @@ function Get-FilesCreateDeleteGetIllegal ($file, $mod)
 	{
 		foreach ($match in $illegal.Matches)
 		{
-			Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+			Write-Host "$ErrorMessagePrefix" $file.FullName "`t" $match.Value.TrimStart(" ")
+			$result = 1
 		}
 	}
+	return $result
 }
 
 # Поиск вызова Remote-функций|Get|GetAll в событиях CanExecute
@@ -56,17 +61,19 @@ function Get-FilesCanExecuteIllegal ($file, $mod)
 					$diff = Get-AddedCode $file
 					$str = $match.Value.Trim()
 					# Написано методом подбора.
-					$str -match '(\S+[.]|\s)\b(Remote|Get|GetAll|public)'
-					$str = $matches[0]
-					if ("$diff" -like "*$str*")
+					if ($str -match '(\S+[.]|\s)\b(Remote|Get|GetAll|public)')
 					{
-						Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
-						$result = 1
+						$str = $matches[0]
+						if ("$diff" -like "*$str*")
+						{
+							Write-Host "$ErrorMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
+							$result = 1
+						}
 					}
 				}
 				else
 				{
-					Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+					Write-Host "$ErrorMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
 					$result = 1
 				}
 			}
@@ -92,12 +99,12 @@ function Get-FilesRefreshIllegal ($file, $mod)
 				$str = $match.Value.Trim()
 				if ($mod -eq "Pipeline" -and "$diff" -like "*$str*")
 				{
-					Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+					Write-Host "$ErrorMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
 					$result = 1
 				}
 				if ($mod -ne "Pipeline")
 				{
-					Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+					Write-Host "$ErrorMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
 					$result = 1
 				}
 			}
@@ -122,7 +129,7 @@ function Get-FilesAnonymousIllegal ($file, $mod)
 	{
 		foreach ($match in $illegal.Matches)
 		{
-			Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+			Write-Host "$WarningMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
 		}
 	}
 }
@@ -143,7 +150,7 @@ function Get-FilesIsAsIllegal ($file, $mod)
 	{
 		foreach ($match in $illegal.Matches)
 		{
-			Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+			Write-Host "$WarningMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
 		}
 	}
 }
@@ -164,7 +171,7 @@ function Get-FilesNetClassIllegal ($file, $mod)
 	{
 		foreach ($match in $illegal.Matches)
 		{
-			Write-Host $file.FullName "`t`t" $match.Value.TrimStart(" ")
+			Write-Host "$WarningMessagePrefix" $file.FullName "`t`t" $match.Value.TrimStart(" ")
 		}
 	}
 }
@@ -228,8 +235,8 @@ if ($all -eq "all")
 	}
 
 	Write-Host "`n"
-	Write-Host "`n"
-	Write-Host "Using new, as is, or prohibited NET libraries" -ForegroundColor Yellow
+	Write-Host "###################################"
+	Write-Host "# Rule -> Использование new, as is или запрещенных библиотек .NET." -ForegroundColor Yellow
 	foreach ($file in $allFiles)
 	{
 		Get-FilesAnonymousIllegal $file $mod
@@ -238,11 +245,15 @@ if ($all -eq "all")
 	}
 
 	Write-Host "`n"
-	Write-Host "`n"
-	Write-Host "Creating, deleting entities or using Get, GetAll not in server code" -ForegroundColor Yellow
+	Write-Host "###################################"
+	Write-Host "# Rule -> Создание, удаление сущностей или использование Get, GetAll вне серверного кода." -ForegroundColor Red
 	foreach ($file in $withoutServerFiles)
 	{
-		Get-FilesCreateDeleteGetIllegal $file $mod
+		$result = Get-FilesCreateDeleteGetIllegal $file $mod
+		if ($result -eq 1)
+		{
+			$exitcode = 1
+		}
 	}
 }
 
@@ -253,8 +264,8 @@ if ($mod -ne "git" -and $mod -ne "Pipeline")
 }
 
 Write-Host "`n"
-Write-Host "`n"
-Write-Host "Calling Get|Get All or server functions in the CanExecute actions." -ForegroundColor Red
+Write-Host "###################################"
+Write-Host "# Rule -> Вызов Get, GetAll или серверных функций в Возможности выполнения действий  (CanExecute)." -ForegroundColor Red
 foreach ($file in $canExecuteFiles)
 {
 	$result = Get-FilesCanExecuteIllegal $file $mod
@@ -265,8 +276,8 @@ foreach ($file in $canExecuteFiles)
 }
 
 Write-Host "`n"
-Write-Host "`n"
-Write-Host "Calling server functions in the Form Refresh." -ForegroundColor Red
+Write-Host "###################################"
+Write-Host "# Rule -> Вызов серверных функций в Обновлении формы (Refresh)." -ForegroundColor Red
 foreach ($file in $refreshFiles)
 {
 	$result = Get-FilesRefreshIllegal $file $mod
@@ -276,4 +287,5 @@ foreach ($file in $refreshFiles)
 	}
 }
 
+Write-Host "###################################"
 exit($exitcode)
